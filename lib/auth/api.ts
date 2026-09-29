@@ -1,0 +1,69 @@
+export type PublicUser = {
+  id: number;
+  username: string;
+  email: string;
+  displayName: string;
+};
+
+export type AuthResponse = {
+  user: PublicUser;
+  accessToken: string;
+  accessTokenExpiresAt: string;
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}/api/v1${path}`, {
+    ...init,
+    credentials: "include",
+    headers: { "Content-Type": "application/json", ...init.headers },
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as
+      | { code?: string; message?: string; fieldErrors?: Record<string, string> }
+      | null;
+    throw new Error(error?.message ?? "Request failed");
+  }
+
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
+export const authApi = {
+  register(input: { username: string; email: string; password: string }) {
+    return request<AuthResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+  login(input: { email: string; password: string }) {
+    return request<AuthResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+  refresh() {
+    return request<AuthResponse>("/auth/refresh", { method: "POST" });
+  },
+  logout(allDevices = false) {
+    return request<void>("/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ allDevices }),
+    });
+  },
+  changePassword(input: { currentPassword: string; newPassword: string }, accessToken: string) {
+    return request<void>("/auth/change-password", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(input),
+    });
+  },
+  me(accessToken: string) {
+    return request<PublicUser>("/auth/me", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  },
+};
