@@ -21,6 +21,7 @@ import { authApi, clearAccessToken, getAccessToken, type PublicUser } from "@/li
 import { socialApi, type Friendship, type UserSummary } from "@/lib/social/api"
 import { ChangePasswordForm } from "./change-password-form"
 import { SettingsView } from "./settings-view"
+import { connectRealtime, type RealtimeEvent } from "@/lib/realtime/client"
 
 type MockMessage = { from: "me" | "them"; text: string; time: string }
 type Conversation = {
@@ -128,6 +129,36 @@ export default function AppPage() {
       })
       .catch(error => console.error("Could not load contacts", error))
       .finally(() => setLoadingSocial(false))
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    return connectRealtime({
+      token,
+      onConnected: reconnected => {
+        console.info(`[realtime] client connected${reconnected ? " after reconnect" : ""}`)
+      },
+      onEvent: (event: RealtimeEvent) => {
+        const payload = event.payload as { friendship?: Friendship }
+        if (!payload.friendship) return
+        if (event.type === "FRIEND_REQUEST_CREATED") {
+          setRequests(items => items.some(item => item.id === payload.friendship?.id)
+            ? items
+            : [payload.friendship as Friendship, ...items])
+          return
+        }
+        if (event.type === "FRIENDSHIP_UPDATED" && payload.friendship.status === "ACCEPTED") {
+          setFriends(items => items.some(item => item.id === payload.friendship?.id)
+            ? items
+            : [...items, payload.friendship as Friendship])
+        }
+      },
+      onReconnect: () => {
+        socialApi.requests(token)
+          .then(setRequests)
+          .catch(error => console.error("Could not reconcile friend requests", error))
+      },
+    })
   }, [token])
 
   useEffect(() => {
