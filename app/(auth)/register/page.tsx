@@ -6,7 +6,7 @@ import { AuthShell } from "@/components/auth/auth-shell"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { authApi } from "@/lib/auth/api"
+import { authApi, setAccessToken } from "@/lib/auth/api"
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ username: "", email: "", password: "", confirmation: "" })
@@ -30,14 +30,14 @@ export default function RegisterPage() {
     if (hasErrors) return
     mutation.mutate(undefined, {
       onSuccess: result => {
-        sessionStorage.setItem("sender_access_token", result.accessToken)
-        window.location.assign("/")
+        setAccessToken(result.accessToken)
+        window.location.assign("/app")
       },
     })
   }
 
   const field = (key: keyof typeof form, label: string, type = "text", autoComplete?: string) => (
-    <div className="auth-field">
+    <div className="grid gap-2">
       <Label htmlFor={key}>{label}</Label>
       <Input
         id={key}
@@ -50,7 +50,7 @@ export default function RegisterPage() {
         aria-describedby={errors[key] ? `${key}-error` : undefined}
         placeholder={key === "username" ? "your_username" : key === "email" ? "you@example.com" : "At least 8 characters"}
       />
-      {errors[key] && <p id={`${key}-error`} className="auth-error" role="alert">{errors[key]}</p>}
+      {errors[key] && <p id={`${key}-error`} className="m-0 text-[.74rem] leading-[1.4] text-[#ffb5a7]" role="alert">{errors[key]}</p>}
     </div>
   )
 
@@ -63,13 +63,13 @@ export default function RegisterPage() {
       alternateLabel="Sign in"
       alternateHref="/login"
     >
-      <form onSubmit={submit} className="auth-form auth-form-register" noValidate>
+      <form onSubmit={submit} className="mt-7 grid gap-[.9rem]" noValidate>
         {field("username", "Username", "text", "username")}
         {field("email", "Email", "email", "email")}
         {field("password", "Password", "password", "new-password")}
         {field("confirmation", "Confirm password", "password", "new-password")}
-        {mutation.isError && <p role="alert" className="auth-form-error">{mutation.error.message}</p>}
-        <Button type="submit" disabled={mutation.isPending} className="auth-submit">
+        {mutation.isError && <p role="alert" className="m-0 rounded-lg border border-[#ffb5a7]/25 bg-[#ffb5a7]/[.08] p-3 text-[.74rem] text-[#ffb5a7]">{mutation.error.message}</p>}
+        <Button type="submit" disabled={mutation.isPending} className="mt-1 h-13 w-full rounded-lg bg-[#2a3bff] text-white hover:bg-[#1d2edc]">
           {mutation.isPending ? "Creating account..." : "Create account"}
         </Button>
       </form>

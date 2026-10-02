@@ -6,7 +6,7 @@ import { AuthShell } from "@/components/auth/auth-shell"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { authApi } from "@/lib/auth/api"
+import { authApi, setAccessToken } from "@/lib/auth/api"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -23,8 +23,8 @@ export default function LoginPage() {
     if (hasErrors) return
     mutation.mutate(undefined, {
       onSuccess: result => {
-        sessionStorage.setItem("sender_access_token", result.accessToken)
-        window.location.assign("/")
+        setAccessToken(result.accessToken)
+        window.location.assign("/app")
       },
     })
   }
@@ -38,8 +38,8 @@ export default function LoginPage() {
       alternateLabel="Create an account"
       alternateHref="/register"
     >
-      <form onSubmit={submit} className="auth-form" noValidate>
-        <div className="auth-field">
+      <form onSubmit={submit} className="mt-8 grid gap-[1.15rem]" noValidate>
+        <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
@@ -52,9 +52,9 @@ export default function LoginPage() {
             aria-describedby={emailError ? "email-error" : undefined}
             placeholder="you@example.com"
           />
-          {emailError && <p id="email-error" className="auth-error" role="alert">{emailError}</p>}
+          {emailError && <p id="email-error" className="m-0 text-[.74rem] leading-[1.4] text-[#ffb5a7]" role="alert">{emailError}</p>}
         </div>
-        <div className="auth-field">
+        <div className="grid gap-2">
           <Label htmlFor="password">Password</Label>
           <Input
             id="password"
@@ -67,10 +67,10 @@ export default function LoginPage() {
             aria-describedby={passwordError ? "password-error" : undefined}
             placeholder="Enter your password"
           />
-          {passwordError && <p id="password-error" className="auth-error" role="alert">{passwordError}</p>}
+          {passwordError && <p id="password-error" className="m-0 text-[.74rem] leading-[1.4] text-[#ffb5a7]" role="alert">{passwordError}</p>}
         </div>
-        {mutation.isError && <p role="alert" className="auth-form-error">{mutation.error.message}</p>}
-        <Button type="submit" disabled={mutation.isPending} className="auth-submit">
+        {mutation.isError && <p role="alert" className="m-0 rounded-lg border border-[#ffb5a7]/25 bg-[#ffb5a7]/[.08] p-3 text-[.74rem] text-[#ffb5a7]">{mutation.error.message}</p>}
+        <Button type="submit" disabled={mutation.isPending} className="mt-1 h-13 w-full rounded-lg bg-[#2a3bff] text-white hover:bg-[#1d2edc]">
           {mutation.isPending ? "Signing in..." : "Sign in"}
         </Button>
       </form>

@@ -12,6 +12,24 @@ export type AuthResponse = {
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const ACCESS_TOKEN_COOKIE = "sender_access_token";
+
+export function getAccessToken() {
+  if (typeof document === "undefined") return null;
+  const value = document.cookie
+    .split("; ")
+    .find(cookie => cookie.startsWith(`${ACCESS_TOKEN_COOKIE}=`))
+    ?.slice(ACCESS_TOKEN_COOKIE.length + 1);
+  return value ? decodeURIComponent(value) : null;
+}
+
+export function setAccessToken(token: string) {
+  document.cookie = `${ACCESS_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; SameSite=Lax`;
+}
+
+export function clearAccessToken() {
+  document.cookie = `${ACCESS_TOKEN_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_URL}/api/v1${path}`, {

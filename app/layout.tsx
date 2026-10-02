@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sender Chat",
-  description: "Real-time messaging",
+  title: "Sender | Talk honestly. Feel closer.",
+  description: "A clearer, more private and more enjoyable place for everyday conversations.",
   icons: {
     icon: "/favicon.svg",
   },
