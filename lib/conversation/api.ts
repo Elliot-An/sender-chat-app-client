@@ -35,6 +35,14 @@ export type MessageProgress = {
   unreadCount: number
 }
 
+export type MessageSearchResult = {
+  message: Message
+  rank: number
+  snippet: string
+}
+
+export type MessageSearchPage = Page<MessageSearchResult>
+
 export type ConversationSummary = {
   id: number
   type: "DIRECT" | "GROUP"
@@ -90,6 +98,8 @@ export const conversationApi = {
   get: (token: string, id: number) => request<Conversation>(`/conversations/${id}`, token),
   messages: (token: string, id: number, cursor?: string | null) =>
     request<Page<Message>>(`/conversations/${id}/messages?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, token),
+  searchMessages: (token: string, id: number, query: string, cursor?: string | null) =>
+    request<MessageSearchPage>(`/conversations/${id}/messages/search?q=${encodeURIComponent(query)}&limit=30${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, token),
   send: (token: string, id: number, body: string, clientMessageId: string) =>
     request<Message>(`/conversations/${id}/messages`, token, { method: "POST", body: JSON.stringify({ body, clientMessageId }) }),
   delivered: (token: string, id: number, messageId: number) =>

@@ -14,6 +14,7 @@ function frame(command: string, headers: Record<string, string>, body = "") {
 type RealtimeClientOptions = {
   token: string
   onConnected?: (reconnected: boolean) => void
+  onReady?: (publish: (conversationId: number, state: "STARTED" | "STOPPED") => void) => void
   onEvent: (event: RealtimeEvent) => void
   onReconnect?: () => void
 }
@@ -23,6 +24,7 @@ export function connectRealtime({
   onConnected,
   onEvent,
   onReconnect,
+  onReady,
 }: RealtimeClientOptions) {
   let socket: WebSocket | null = null
   let stopped = false
@@ -50,6 +52,13 @@ export function connectRealtime({
       if (command === "CONNECTED") {
         console.info(`[realtime] connected${wasConnected ? " (reconnected)" : ""} to ${WS_URL}`)
         currentSocket.send(frame("SUBSCRIBE", { id: "user-events", destination: "/user/queue/events", ack: "auto" }))
+        onReady?.((conversationId, state) => {
+          if (currentSocket.readyState !== WebSocket.OPEN) return
+          currentSocket.send(frame("SEND", {
+            destination: `/app/conversations/${conversationId}/typing`,
+            "content-type": "application/json",
+          }, JSON.stringify({ state })))
+        })
         onConnected?.(wasConnected)
         if (wasConnected) onReconnect?.()
         wasConnected = true

@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -19,7 +19,7 @@ import { conversationApi, type Message, type MessageProgressEvent } from "@/lib/
 import { ChangePasswordForm } from "./change-password-form"
 import { SettingsView } from "./settings-view"
 import { connectRealtime, type RealtimeEvent } from "@/lib/realtime/client"
-import { Avatar, ChatView, InfoPanel, initials, type Conversation } from "./conversation-components"
+import { Avatar, ChatView, InfoPanel, MessageSearch, initials, type Conversation } from "./conversation-components"
 import { useConversationMessages } from "./use-conversation-messages"
 
 const COLORS = ["#0f766e", "#9a3412", "#a16207", "#4338ca", "#be123c", "#0369a1"]
@@ -63,6 +63,10 @@ export default function AppPage() {
   const [view, setView] = useState<"chat" | "settings" | "change-password" | "new-group">("chat")
   const [loadingSocial, setLoadingSocial] = useState(true)
   const [sentRequestUserIds, setSentRequestUserIds] = useState<number[]>([])
+  const [messageSearchOpen, setMessageSearchOpen] = useState(false)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<number | null>(null)
+  const [typingByConversation, setTypingByConversation] = useState<Record<number, Record<number, number>>>({})
+  const typingPublisher = useRef<(conversationId: number, state: "STARTED" | "STOPPED") => void>(() => {})
 
   const token = getAccessToken()
   const queryClient = useQueryClient()
@@ -70,6 +74,11 @@ export default function AppPage() {
     queryKey: ["conversations", token],
     queryFn: () => conversationApi.list(token as string),
     enabled: Boolean(token),
+  })
+  const activeConversationDetails = useQuery({
+    queryKey: ["conversation", token, activeConversation],
+    queryFn: () => conversationApi.get(token as string, activeConversation as number),
+    enabled: Boolean(token && activeConversation),
   })
   const { messageQuery, sendMutation, activeMessages, handleRealtimeMessage, handleRealtimeProgress } = useConversationMessages(token, activeConversation, currentUser?.id)
   const conversations = useMemo(() => (conversationQuery.data?.items ?? []).map(summaryToConversation), [conversationQuery.data])
@@ -98,6 +107,7 @@ export default function AppPage() {
     if (!token) return
     return connectRealtime({
       token,
+      onReady: publish => { typingPublisher.current = publish },
       onConnected: reconnected => {
         console.info(`[realtime] client connected${reconnected ? " after reconnect" : ""}`)
       },
@@ -112,6 +122,17 @@ export default function AppPage() {
         if (event.type === "MESSAGE_DELIVERED" || event.type === "MESSAGE_READ") {
           const payload = event.payload as MessageProgressEvent
           handleRealtimeProgress({ ...payload, kind: event.type === "MESSAGE_READ" ? "READ" : "DELIVERED" })
+          return
+        }
+        if (event.type === "TYPING_STARTED" || event.type === "TYPING_STOPPED") {
+          const payload = event.payload as { conversationId?: number; userId?: number; expiresAt?: string }
+          if (!payload.conversationId || !payload.userId) return
+          setTypingByConversation(current => {
+            const conversation = { ...(current[payload.conversationId] ?? {}) }
+            if (event.type === "TYPING_STOPPED") delete conversation[payload.userId]
+            else conversation[payload.userId] = payload.expiresAt ? Date.parse(payload.expiresAt) : Date.now() + 5000
+            return { ...current, [payload.conversationId]: conversation }
+          })
           return
         }
         const payload = event.payload as { friendship?: Friendship }
@@ -129,6 +150,7 @@ export default function AppPage() {
         }
       },
       onReconnect: () => {
+        setTypingByConversation({})
         queryClient.invalidateQueries({ queryKey: ["conversations", token] })
         queryClient.invalidateQueries({ queryKey: ["messages", token] })
         Promise.all([socialApi.requests(token), socialApi.friends(token)])
@@ -140,6 +162,24 @@ export default function AppPage() {
       },
     })
   }, [handleRealtimeMessage, handleRealtimeProgress, queryClient, token])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const now = Date.now()
+      setTypingByConversation(current => Object.fromEntries(Object.entries(current).map(([conversationId, users]) => [
+        conversationId,
+        Object.fromEntries(Object.entries(users).filter(([, expiresAt]) => expiresAt > now)),
+      ]).filter(([, users]) => Object.keys(users).length)))
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const sendTyping = useCallback((state: "STARTED" | "STOPPED") => {
+    if (activeConversation) typingPublisher.current(activeConversation, state)
+  }, [activeConversation])
+  const typingNames = activeConversationDetails.data?.members
+    .filter(member => Object.prototype.hasOwnProperty.call(typingByConversation[active?.id ?? 0] ?? {}, member.userId))
+    .map(member => member.displayName || member.username) ?? []
 
   useEffect(() => {
     if (!token || search.trim().length < 2) {
@@ -168,6 +208,23 @@ export default function AppPage() {
     setActiveConversation(id)
     setView("chat")
     setShowInfo(false)
+    setMessageSearchOpen(false)
+    setHighlightedMessageId(null)
+  }
+
+  async function openSearchResult(messageId: number) {
+    if (!activeConversation) return
+    setMessageSearchOpen(false)
+    setShowInfo(false)
+    let pages = messageQuery.data?.pages ?? []
+    while (!pages.some(page => page.items.some(item => item.id === messageId)) && messageQuery.hasNextPage) {
+      const next = await messageQuery.fetchNextPage()
+      pages = next.data?.pages ?? pages
+    }
+    if (pages.some(page => page.items.some(item => item.id === messageId))) {
+      setHighlightedMessageId(messageId)
+      window.setTimeout(() => setHighlightedMessageId(null), 2500)
+    }
   }
 
   async function startDirect(userId: number) {
@@ -300,9 +357,9 @@ export default function AppPage() {
         {view === "settings" ? <SettingsView user={currentUser} onBack={() => setView("chat")} onChangePassword={() => setView("change-password")} onLogout={logout} /> :
           view === "change-password" ? <ChangePasswordForm onBack={() => setView("settings")} /> :
           view === "new-group" ? <NewGroupView onBack={() => setView("chat")} friends={friendUsers} onCreate={createGroup} /> :
-            active ? <ChatView conversation={{ ...active, messages: activeMessages }} message={message} setMessage={setMessage} onSend={sendMessage} showInfo={showInfo} setShowInfo={setShowInfo} onBack={() => setActiveConversation(null)} onLoadMore={() => messageQuery.fetchNextPage()} hasMore={Boolean(messageQuery.hasNextPage)} /> :
+            active ? <><ChatView conversation={{ ...active, messages: activeMessages }} message={message} setMessage={setMessage} onSend={sendMessage} onTyping={sendTyping} typingUsers={typingNames} showInfo={showInfo} setShowInfo={setShowInfo} onBack={() => setActiveConversation(null)} onLoadMore={() => messageQuery.fetchNextPage()} hasMore={Boolean(messageQuery.hasNextPage)} highlightedMessageId={highlightedMessageId} onSearch={() => setMessageSearchOpen(true)} />{messageSearchOpen && token && <MessageSearch token={token} conversationId={active.id} onClose={() => setMessageSearchOpen(false)} onSelect={openSearchResult} />}</> :
               <div className="m-auto grid max-w-[360px] place-items-center p-6 text-center"><Image src="/sender-icon.svg" loading="eager" alt="Sender" width={360} height={360} /><h2 className="my-4 text-2xl font-semibold tracking-[-.04em]">Your conversations, in one place.</h2><p className="m-0 leading-relaxed text-[#a6adcb]">Select a conversation or find someone new to message.</p></div>}
-        {showInfo && active && <InfoPanel conversation={active} onClose={() => setShowInfo(false)} />}
+        {showInfo && active && <InfoPanel conversation={active} onClose={() => setShowInfo(false)} onSearch={() => { setShowInfo(false); setMessageSearchOpen(true) }} />}
       </section>
     </main>
   )
