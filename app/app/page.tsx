@@ -117,6 +117,7 @@ export default function AppPage() {
         (conversationId: number, state: "STARTED" | "STOPPED") => void
     >(() => {
     })
+    const suppressDesktopAutoSelect = useRef(false)
 
     const token = getAccessToken()
     const queryClient = useQueryClient()
@@ -168,6 +169,7 @@ export default function AppPage() {
     ])
 
     useEffect(() => {
+        if (suppressDesktopAutoSelect.current) return
         if (activeConversation !== null || !conversations.length) return
         // Desktop: open the first conversation. Mobile keeps the list until the user picks one.
         if (window.matchMedia("(min-width: 721px)").matches) {
@@ -260,9 +262,11 @@ export default function AppPage() {
                         queryClient.removeQueries({
                             queryKey: ["messages", token, payload.conversationId],
                         })
-                        setActiveConversation(current =>
-                            current === payload.conversationId ? null : current,
-                        )
+                        setActiveConversation(current => {
+                            if (current !== payload.conversationId) return current
+                            suppressDesktopAutoSelect.current = true
+                            return null
+                        })
                         setShowInfo(false)
                         return
                     }
@@ -452,6 +456,7 @@ export default function AppPage() {
     )
 
     function openConversation(id: number) {
+        suppressDesktopAutoSelect.current = false
         setActiveConversation(id)
         setView("chat")
         setShowInfo(false)
@@ -939,6 +944,7 @@ export default function AppPage() {
                                 queryKey: ["messages", token, conversationId],
                             })
                             setShowInfo(false)
+                            suppressDesktopAutoSelect.current = true
                             setActiveConversation(null)
                         }}
                     />
