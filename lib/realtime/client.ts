@@ -29,6 +29,7 @@ export function connectRealtime({
   let socket: WebSocket | null = null
   let stopped = false
   let reconnectTimer: number | undefined
+  let heartbeatTimer: number | undefined
   let reconnectDelay = 1000
   const seenEvents = new Set<string>()
   let wasConnected = false
@@ -59,6 +60,16 @@ export function connectRealtime({
             "content-type": "application/json",
           }, JSON.stringify({ state })))
         })
+        const sendHeartbeat = () => {
+          if (currentSocket.readyState !== WebSocket.OPEN) return
+          currentSocket.send(frame("SEND", {
+            destination: "/app/presence/heartbeat",
+            "content-type": "application/json",
+          }, "{}"))
+        }
+        sendHeartbeat()
+        if (heartbeatTimer) window.clearInterval(heartbeatTimer)
+        heartbeatTimer = window.setInterval(sendHeartbeat, 30_000)
         onConnected?.(wasConnected)
         if (wasConnected) onReconnect?.()
         wasConnected = true
@@ -88,6 +99,7 @@ export function connectRealtime({
   return () => {
     stopped = true
     if (reconnectTimer) window.clearTimeout(reconnectTimer)
+    if (heartbeatTimer) window.clearInterval(heartbeatTimer)
     if (!socket) return
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(frame("DISCONNECT", { receipt: crypto.randomUUID() }))

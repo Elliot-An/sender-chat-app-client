@@ -51,7 +51,7 @@ function summaryToConversation(summary: ConversationSummary): Conversation {
         name,
         initials: initials(name),
         color: AVATAR_COLORS[summary.id % AVATAR_COLORS.length],
-        online: false,
+        online: summary.type === "DIRECT" ? summary.online : false,
         group: summary.type === "GROUP",
         avatarUrl:
             summary.type === "GROUP"
@@ -62,8 +62,9 @@ function summaryToConversation(summary: ConversationSummary): Conversation {
             ? [
                 {
                     id: summary.latestMessage.id,
+                    conversationId: summary.id,
                     from: "them" as const,
-                    text: summary.latestMessage.body,
+                    text: summary.latestMessage.body ?? "",
                     time: new Date(summary.latestMessage.createdAt).toLocaleTimeString(
                         "en-US",
                         {hour: "numeric", minute: "2-digit"},
@@ -81,6 +82,7 @@ function summaryToConversation(summary: ConversationSummary): Conversation {
                     delivery: "sent" as const,
                     deliveredBy: [],
                     readBy: [],
+                    attachments: summary.latestMessage.attachments ?? [],
                 },
             ]
             : [],
@@ -289,6 +291,7 @@ export default function AppPage() {
                                     latestMessage: null,
                                     unreadCount: 0,
                                     updatedAt: updated.updatedAt,
+                                    online: false,
                                 }
                                 const exists = data.items.some(item => item.id === updated.id)
                                 return {
@@ -310,6 +313,41 @@ export default function AppPage() {
                             },
                         )
                     }
+                    return
+                }
+                if (event.type === "PRESENCE_CHANGED") {
+                    const presence = event.payload as {
+                        userId?: number
+                        state?: "ONLINE" | "OFFLINE"
+                    }
+                    if (presence.userId == null || !presence.state) return
+                    const online = presence.state === "ONLINE"
+                    const userId = presence.userId
+                    setFriends(items =>
+                        items.map(friend => ({
+                            ...friend,
+                            requester:
+                                friend.requester.id === userId
+                                    ? {...friend.requester, online}
+                                    : friend.requester,
+                            addressee:
+                                friend.addressee.id === userId
+                                    ? {...friend.addressee, online}
+                                    : friend.addressee,
+                        })),
+                    )
+                    queryClient.setQueryData(
+                        ["conversations", token],
+                        (data: { items: ConversationSummary[] } | undefined) =>
+                            data && {
+                                ...data,
+                                items: data.items.map(item =>
+                                    item.type === "DIRECT" && item.otherUser?.id === userId
+                                        ? {...item, online}
+                                        : item,
+                                ),
+                            },
+                    )
                     return
                 }
                 const payload = event.payload as { friendship?: Friendship }
@@ -438,10 +476,21 @@ export default function AppPage() {
                     friend.requester.id === currentUser?.id
                         ? friend.addressee
                         : friend.requester
-                return {...user, friendshipId: friend.id}
+                return {
+                    ...user,
+                    online: Boolean(user.online),
+                    friendshipId: friend.id,
+                }
             }),
         [friends, currentUser],
     )
+    const friendOnlineById = useMemo(() => {
+        const map = new Map<number, boolean>()
+        for (const user of friendUsers) {
+            map.set(user.id, user.online)
+        }
+        return map
+    }, [friendUsers])
     const friendIds = useMemo(
         () => new Set(friendUsers.map(user => user.id)),
         [friendUsers],
@@ -504,11 +553,19 @@ export default function AppPage() {
         }
     }
 
-    function sendMessage(event: React.FormEvent) {
-        event.preventDefault()
-        const text = message.trim()
-        if (!text || !active) return
-        sendMutation.mutate({id: active.id, body: text})
+    function sendMessage(payload: {
+        body: string | null
+        attachments: Array<{ objectKey: string; originalFilename: string }>
+        clientMessageId: string
+    }) {
+        if (!active) return
+        if (!payload.body && payload.attachments.length === 0) return
+        sendMutation.mutate({
+            id: active.id,
+            body: payload.body,
+            attachments: payload.attachments,
+            clientMessageId: payload.clientMessageId,
+        })
         setMessage("")
     }
 
@@ -611,7 +668,7 @@ export default function AppPage() {
                                     <Avatar
                                         name={formatUser(user)}
                                         color={AVATAR_COLORS[user.id % AVATAR_COLORS.length]}
-                                        online
+                                        online={friendOnlineById.get(user.id) === true}
                                         imageUrl={user.avatarUrl}
                                     />
                                     <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -735,7 +792,6 @@ export default function AppPage() {
                                                             color={
                                                                 AVATAR_COLORS[user.id % AVATAR_COLORS.length]
                                                             }
-                                                            online
                                                             imageUrl={user.avatarUrl}
                                                         />
                                                         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -786,7 +842,7 @@ export default function AppPage() {
                                                         color={
                                                             AVATAR_COLORS[user.id % AVATAR_COLORS.length]
                                                         }
-                                                        online
+                                                        online={Boolean(user.online)}
                                                         imageUrl={user.avatarUrl}
                                                     />
                                                     <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -796,7 +852,7 @@ export default function AppPage() {
                               </b>
                             </span>
                             <span className="truncate text-xs text-[#a6adcb]">
-                              @{user.username}
+                              {user.online ? "Active now" : "Offline"}
                             </span>
                           </span>
                                                 </button>
@@ -826,7 +882,6 @@ export default function AppPage() {
                     <Avatar
                         name={accountName}
                         color="#4338ca"
-                        online
                         imageUrl={currentUser?.avatarUrl}
                     />
                     <span className="flex min-w-0 flex-1 flex-col gap-1">
@@ -863,6 +918,7 @@ export default function AppPage() {
                         <ChatView
                             conversation={{...active, messages: activeMessages}}
                             members={memberProfiles}
+                            token={token as string}
                             message={message}
                             setMessage={setMessage}
                             onSend={sendMessage}

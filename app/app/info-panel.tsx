@@ -16,6 +16,7 @@ type FriendOption = {
     username: string
     displayName: string
     avatarUrl: string | null
+    online?: boolean
 }
 
 type InfoPanelProps = {
@@ -123,11 +124,16 @@ export function InfoPanel({
         try {
             let avatarObjectKey: string | undefined
             if (file) {
+                const contentType = file.type.split(";")[0].trim().toLowerCase()
                 const upload = await conversationApi.createGroupAvatarUpload(token, conversation.id, {
-                    contentType: file.type,
+                    contentType,
                     contentLength: file.size,
                 })
-                await userApi.uploadAvatar(file, upload.putUrl)
+                const put = await userApi.uploadAvatar(file, upload.putUrl, contentType)
+                if (!put.ok) {
+                    setError(put.message)
+                    return
+                }
                 avatarObjectKey = upload.objectKey
             }
             const nameChanged = trimmed !== conversation.name
@@ -309,6 +315,7 @@ export function InfoPanel({
                                             name={friend.displayName || friend.username}
                                             color={AVATAR_COLORS[friend.id % AVATAR_COLORS.length]}
                                             size="sm"
+                                            online={Boolean(friend.online)}
                                             imageUrl={friend.avatarUrl}
                                         />
                                         <span className="truncate">
@@ -333,6 +340,7 @@ export function InfoPanel({
                         {members.map(member => {
                             const label = member.displayName || member.username
                             const isSelf = member.userId === currentUserId
+                            const friend = friends.find(item => item.id === member.userId)
                             return (
                                 <li
                                     key={member.userId}
@@ -342,6 +350,7 @@ export function InfoPanel({
                                         name={label}
                                         color={AVATAR_COLORS[member.userId % AVATAR_COLORS.length]}
                                         size="sm"
+                                        online={Boolean(friend?.online)}
                                         imageUrl={member.avatarUrl}
                                     />
                                     <span className="min-w-0 flex-1 truncate text-sm">

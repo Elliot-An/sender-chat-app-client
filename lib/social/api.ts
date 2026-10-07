@@ -1,6 +1,8 @@
 import { authApi, clearAccessToken, setAccessToken, type PublicUser } from "@/lib/auth/api"
 
-export type UserSummary = Pick<PublicUser, "id" | "username" | "displayName" | "avatarUrl">
+export type UserSummary = Pick<PublicUser, "id" | "username" | "displayName" | "avatarUrl"> & {
+  online?: boolean
+}
 export type Friendship = {
   id: number
   requester: UserSummary

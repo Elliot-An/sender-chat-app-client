@@ -100,11 +100,16 @@ export function SettingsView({user, onBack, onChangePassword, onLogout, onSaved}
         try {
             let avatarObjectKey: string | undefined
             if (file) {
+                const contentType = file.type.split(";")[0].trim().toLowerCase()
                 const upload = await userApi.createAvatarUpload(token, {
-                    contentType: file.type,
+                    contentType,
                     contentLength: file.size,
                 })
-                await userApi.uploadAvatar(file, upload.putUrl)
+                const put = await userApi.uploadAvatar(file, upload.putUrl, contentType)
+                if (!put.ok) {
+                    setError(put.message)
+                    return
+                }
                 avatarObjectKey = upload.objectKey
             }
             const next = await userApi.updateProfile(token, {

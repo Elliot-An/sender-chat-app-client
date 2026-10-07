@@ -51,14 +51,24 @@ export const userApi = {
       body: JSON.stringify(input),
     })
   },
-  async uploadAvatar(file: File, putUrl: string) {
-    const response = await fetch(putUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    })
-    if (!response.ok) {
-      throw new Error("Could not upload avatar")
+  async uploadAvatar(
+    file: File,
+    putUrl: string,
+    contentType: string,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    try {
+      const response = await fetch(putUrl, {
+        method: "PUT",
+        // Must match the Content-Type signed into the presigned URL (not a free-form file.type).
+        headers: { "Content-Type": contentType },
+        body: file,
+      })
+      if (!response.ok) {
+        return { ok: false, message: "Could not upload avatar" }
+      }
+      return { ok: true }
+    } catch {
+      return { ok: false, message: "Could not upload avatar" }
     }
   },
 }

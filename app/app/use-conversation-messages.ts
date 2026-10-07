@@ -49,8 +49,22 @@ export function useConversationMessages(token: string | null, activeConversation
         enabled: Boolean(token && activeConversation),
     })
     const sendMutation = useMutation({
-        mutationFn: ({id, body}: { id: number; body: string }) =>
-            conversationApi.send(token as string, id, body, crypto.randomUUID()),
+        mutationFn: ({
+            id,
+            body,
+            attachments,
+            clientMessageId,
+        }: {
+            id: number
+            body?: string | null
+            attachments?: Array<{ objectKey: string; originalFilename: string }>
+            clientMessageId: string
+        }) =>
+            conversationApi.send(token as string, id, {
+                body,
+                clientMessageId,
+                attachments,
+            }),
         onSuccess: (message) => {
             addMessageToCache(message)
             updateConversationSummary(message)
@@ -174,8 +188,9 @@ export function useConversationMessages(token: string | null, activeConversation
         const senderName = message.sender.displayName || message.sender.username
         return {
             id: message.id,
+            conversationId: message.conversationId,
             from: message.sender.id === currentUserId ? "me" as const : "them" as const,
-            text: message.body,
+            text: message.body ?? "",
             time: new Date(message.createdAt).toLocaleTimeString("en-US", {hour: "numeric", minute: "2-digit"}),
             createdAt: message.createdAt,
             senderId: message.sender.id,
@@ -185,6 +200,7 @@ export function useConversationMessages(token: string | null, activeConversation
             delivery,
             deliveredBy: allDeliveredBy,
             readBy: allReadBy,
+            attachments: message.attachments ?? [],
         }
     }).reverse()
 

@@ -1,5 +1,14 @@
+export type ChatAttachment = {
+    id: string
+    originalFilename: string
+    contentType: string
+    sizeBytes: number
+    sortOrder: number
+}
+
 export type ChatMessage = {
     id: number
+    conversationId: number
     from: "me" | "them"
     text: string
     time: string
@@ -11,6 +20,7 @@ export type ChatMessage = {
     delivery: "sent" | "delivered" | "read"
     deliveredBy: number[]
     readBy: number[]
+    attachments: ChatAttachment[]
 }
 
 export type ConversationMemberProfile = {

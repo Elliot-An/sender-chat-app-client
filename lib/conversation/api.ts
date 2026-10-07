@@ -2,14 +2,28 @@ import { type PublicUser, clearAccessToken, setAccessToken, authApi } from "@/li
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"
 
+export type MessageAttachment = {
+  id: string
+  originalFilename: string
+  contentType: string
+  sizeBytes: number
+  sortOrder: number
+}
+
 export type Message = {
   id: number
   conversationId: number
   sender: PublicUser
-  body: string
+  body: string | null
   clientMessageId: string
   createdAt: string
+  attachments?: MessageAttachment[]
   receipts: MessageReceipt[]
+}
+
+export type AttachmentCommit = {
+  objectKey: string
+  originalFilename: string
 }
 
 export type MessageReceipt = {
@@ -52,6 +66,7 @@ export type ConversationSummary = {
   latestMessage: Message | null
   unreadCount: number
   updatedAt: string
+  online: boolean
 }
 
 export type ConversationMember = {
@@ -116,8 +131,54 @@ export const conversationApi = {
     request<Page<Message>>(`/conversations/${id}/messages?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, token),
   searchMessages: (token: string, id: number, query: string, cursor?: string | null) =>
     request<MessageSearchPage>(`/conversations/${id}/messages/search?q=${encodeURIComponent(query)}&limit=30${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`, token),
-  send: (token: string, id: number, body: string, clientMessageId: string) =>
-    request<Message>(`/conversations/${id}/messages`, token, { method: "POST", body: JSON.stringify({ body, clientMessageId }) }),
+  send: (
+    token: string,
+    id: number,
+    input: { body?: string | null; clientMessageId: string; attachments?: AttachmentCommit[] },
+  ) =>
+    request<Message>(`/conversations/${id}/messages`, token, {
+      method: "POST",
+      body: JSON.stringify({
+        body: input.body ?? null,
+        clientMessageId: input.clientMessageId,
+        attachments: input.attachments ?? [],
+      }),
+    }),
+  createAttachmentUpload: (
+    token: string,
+    id: number,
+    input: { contentType: string; contentLength: number; originalFilename: string },
+  ) =>
+    request<{ putUrl: string; objectKey: string; expiresAt: string }>(
+      `/conversations/${id}/attachment-uploads`,
+      token,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  async uploadAttachment(
+    file: File,
+    putUrl: string,
+    contentType: string,
+  ): Promise<{ ok: true } | { ok: false; message: string }> {
+    try {
+      const response = await fetch(putUrl, {
+        method: "PUT",
+        // Must match the Content-Type signed into the presigned URL (not a free-form file.type).
+        headers: { "Content-Type": contentType },
+        body: file,
+      })
+      if (!response.ok) {
+        return { ok: false, message: "Could not upload attachment" }
+      }
+      return { ok: true }
+    } catch {
+      return { ok: false, message: "Could not upload attachment" }
+    }
+  },
+  downloadAttachment: (token: string, conversationId: number, messageId: number, attachmentId: string) =>
+    request<{ getUrl: string; expiresAt: string }>(
+      `/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}/download`,
+      token,
+    ),
   delivered: (token: string, id: number, messageId: number) =>
     request<MessageProgress>(`/conversations/${id}/delivery`, token, {
       method: "POST",

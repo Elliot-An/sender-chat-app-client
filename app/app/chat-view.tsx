@@ -1,12 +1,31 @@
 "use client"
 
-import {ArrowLeft, Info, Paperclip, Search, Send} from "lucide-react"
+import {ArrowLeft, Info, Paperclip, Search, Send, X} from "lucide-react"
 import {useEffect, useLayoutEffect, useMemo, useRef, useState} from "react"
+import {conversationApi} from "@/lib/conversation/api"
 import {MESSAGE_BODY_MAX_LENGTH} from "@/lib/message/emoji"
 import {Avatar} from "./avatar"
 import {EmojiPickerButton} from "./emoji-picker-button"
 import {MessageBubble} from "./message-bubble"
 import type {ChatMessage, Conversation, ConversationMemberProfile} from "./types"
+
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+])
+const MAX_ATTACHMENTS = 5
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+type PendingAttachment = {
+    id: string
+    file: File
+    status: "ready" | "error"
+    error?: string
+}
 
 function sameCalendarDay(a: Date, b: Date) {
     return (
@@ -94,9 +113,14 @@ function buildTimeline(messages: ChatMessage[]): TimelineItem[] {
 type ChatViewProps = {
     conversation: Conversation
     members: ConversationMemberProfile[]
+    token: string
     message: string
     setMessage: (value: string) => void
-    onSend: (event: React.FormEvent) => void
+    onSend: (payload: {
+        body: string | null
+        attachments: Array<{ objectKey: string; originalFilename: string }>
+        clientMessageId: string
+    }) => void
     onTyping: (state: "STARTED" | "STOPPED") => void
     typingUsers: string[]
     showInfo: boolean
@@ -129,6 +153,7 @@ function typingLabel(typingUsers: string[]) {
 export function ChatView({
      conversation,
      members,
+     token,
      message,
      setMessage,
      onSend,
@@ -145,6 +170,9 @@ export function ChatView({
     const typingTimer = useRef<number | undefined>(undefined)
     const messagesScrollRef = useRef<HTMLDivElement>(null)
     const messageInputRef = useRef<HTMLInputElement>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([])
+    const [sending, setSending] = useState(false)
     const [emojiPicker, setEmojiPicker] = useState({
         conversationId: conversation.id,
         open: false,
@@ -263,6 +291,7 @@ export function ChatView({
                     ) : (
                         <MessageBubble
                             key={item.key}
+                            token={token}
                             message={item.message}
                             highlighted={highlightedMessageId === item.message.id}
                             showName={item.showName}
@@ -282,18 +311,142 @@ export function ChatView({
                 </div>
             )}
 
+            {pendingAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 px-4 pb-1">
+                    {pendingAttachments.map(item => (
+                        <span
+                            key={item.id}
+                            className="inline-flex max-w-full items-center gap-1 rounded-md border border-[#2d3560] bg-[#0d1026] px-2 py-1 text-xs text-[#f7f8ff]"
+                        >
+                            <span className="truncate">{item.file.name}</span>
+                            {item.status === "error" && (
+                                <span className="text-[#f87171]">{item.error ?? "Failed"}</span>
+                            )}
+                            <button
+                                type="button"
+                                className="grid size-4 place-items-center border-0 bg-transparent text-[#a6adcb]"
+                                aria-label={`Remove ${item.file.name}`}
+                                onClick={() =>
+                                    setPendingAttachments(current =>
+                                        current.filter(entry => entry.id !== item.id),
+                                    )
+                                }
+                            >
+                                <X size={12}/>
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+
             <form
-                className="relative flex h-[68px] items-center gap-2 px-4 py-3"
-                onSubmit={event => {
+                className="relative flex min-h-[68px] items-center gap-2 px-4 py-3"
+                onSubmit={async event => {
+                    event.preventDefault()
                     setEmojiOpen(false)
                     onTyping("STOPPED")
-                    onSend(event)
+                    const text = message.trim()
+                    if ((!text && pendingAttachments.length === 0) || sending) return
+                    if (pendingAttachments.some(item => item.status === "error")) return
+                    setSending(true)
+                    const clientMessageId = crypto.randomUUID()
+                    const uploaded: Array<{ objectKey: string; originalFilename: string }> = []
+                    let failedId: string | null = null
+                    let failedMessage = "Upload failed"
+                    try {
+                        for (const item of pendingAttachments) {
+                            const contentType = item.file.type.split(";")[0].trim().toLowerCase()
+                            const upload = await conversationApi.createAttachmentUpload(
+                                token,
+                                conversation.id,
+                                {
+                                    contentType,
+                                    contentLength: item.file.size,
+                                    originalFilename: item.file.name,
+                                },
+                            )
+                            const put = await conversationApi.uploadAttachment(
+                                item.file,
+                                upload.putUrl,
+                                contentType,
+                            )
+                            if (!put.ok) {
+                                failedId = item.id
+                                failedMessage = put.message
+                                break
+                            }
+                            uploaded.push({
+                                objectKey: upload.objectKey,
+                                originalFilename: item.file.name,
+                            })
+                        }
+
+                        if (failedId != null) {
+                            setPendingAttachments(current =>
+                                current.map(item =>
+                                    item.id === failedId
+                                        ? { ...item, status: "error" as const, error: failedMessage }
+                                        : item,
+                                ),
+                            )
+                            return
+                        }
+
+                        onSend({
+                            body: text || null,
+                            attachments: uploaded,
+                            clientMessageId,
+                        })
+                        setPendingAttachments([])
+                    } catch {
+                        const markId = failedId ?? pendingAttachments[0]?.id
+                        if (markId != null) {
+                            setPendingAttachments(current =>
+                                current.map(item =>
+                                    item.id === markId
+                                        ? { ...item, status: "error" as const, error: failedMessage }
+                                        : item,
+                                ),
+                            )
+                        }
+                    } finally {
+                        setSending(false)
+                    }
                 }}
             >
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,application/pdf,text/plain"
+                    onChange={event => {
+                        const files = Array.from(event.target.files ?? [])
+                        event.target.value = ""
+                        setPendingAttachments(current => {
+                            const next = [...current]
+                            let total = next.reduce((sum, item) => sum + item.file.size, 0)
+                            for (const file of files) {
+                                if (next.length >= MAX_ATTACHMENTS) break
+                                if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) continue
+                                if (file.size < 1 || file.size > MAX_ATTACHMENT_BYTES) continue
+                                if (total + file.size > MAX_TOTAL_ATTACHMENT_BYTES) continue
+                                total += file.size
+                                next.push({
+                                    id: crypto.randomUUID(),
+                                    file,
+                                    status: "ready",
+                                })
+                            }
+                            return next
+                        })
+                    }}
+                />
                 <button
                     type="button"
                     className="grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb]"
                     aria-label="Attach a file"
+                    onClick={() => fileInputRef.current?.click()}
                 >
                     <Paperclip size={19}/>
                 </button>
@@ -317,7 +470,11 @@ export function ChatView({
                 <button
                     className="grid size-[38px] shrink-0 place-items-center rounded-full border-0 bg-[#2a3bff] text-white disabled:cursor-default disabled:opacity-45"
                     type="submit"
-                    disabled={!message.trim()}
+                    disabled={
+                        sending
+                        || (!message.trim() && pendingAttachments.length === 0)
+                        || pendingAttachments.some(item => item.status === "error")
+                    }
                     aria-label="Send message"
                 >
                     <Send size={18}/>
