@@ -138,12 +138,17 @@ export function useConversationMessages(token: string | null, activeConversation
     const handleRealtimeMessage = useCallback((message: Message) => {
         addMessageToCache(message)
         updateConversationSummary(message)
+        if (message.attachments?.length) {
+            void queryClient.invalidateQueries({
+                queryKey: ["conversation-attachments", token, message.conversationId],
+            })
+        }
         if (message.conversationId === activeConversationRef.current) {
             markRead(message)
         } else if (message.sender.id !== currentUserId) {
             queueProgress(message.conversationId, "delivered", message.id)
         }
-    }, [addMessageToCache, currentUserId, markRead, queueProgress, updateConversationSummary])
+    }, [addMessageToCache, currentUserId, markRead, queryClient, queueProgress, token, updateConversationSummary])
 
     const handleRealtimeProgress = useCallback((receipt: MessageProgressEvent) => {
         setReceipts(current => {

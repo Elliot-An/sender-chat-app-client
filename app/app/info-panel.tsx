@@ -6,6 +6,7 @@ import {conversationApi, type ConversationMember} from "@/lib/conversation/api"
 import {userApi} from "@/lib/user/api"
 import {prepareAvatarFile} from "@/lib/user/prepare-avatar"
 import {Avatar} from "./avatar"
+import {MediaFilesSection} from "./media-files-section"
 import {AVATAR_COLORS, type Conversation} from "./types"
 
 const MAX_BYTES = 2 * 1024 * 1024
@@ -377,14 +378,7 @@ export function InfoPanel({
                 </details>
             )}
 
-            <details className="border-t border-[#2d3560] px-4">
-                <summary className="flex cursor-pointer list-none justify-between py-4 text-sm font-semibold">
-                    Media, files and links <ChevronRight size={16}/>
-                </summary>
-                <p className="p-4 text-center text-xs text-[#a6adcb]">
-                    No shared media yet.
-                </p>
-            </details>
+            <MediaFilesSection conversationId={conversation.id} token={token}/>
 
             {conversation.group && (
                 <div className="border-t border-[#2d3560] px-4 py-4">

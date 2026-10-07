@@ -10,6 +10,18 @@ export type MessageAttachment = {
   sortOrder: number
 }
 
+export type ConversationAttachment = {
+  id: string
+  messageId: number
+  originalFilename: string
+  contentType: string
+  sizeBytes: number
+  sortOrder: number
+  createdAt: string
+}
+
+export type AttachmentKind = "all" | "media" | "files"
+
 export type Message = {
   id: number
   conversationId: number
@@ -179,6 +191,19 @@ export const conversationApi = {
       `/conversations/${conversationId}/messages/${messageId}/attachments/${attachmentId}/download`,
       token,
     ),
+  listAttachments: (
+    token: string,
+    conversationId: number,
+    options: { kind?: AttachmentKind; cursor?: string | null; limit?: number } = {},
+  ) => {
+    const kind = options.kind ?? "all"
+    const limit = options.limit ?? 30
+    const cursor = options.cursor ? `&cursor=${encodeURIComponent(options.cursor)}` : ""
+    return request<Page<ConversationAttachment>>(
+      `/conversations/${conversationId}/attachments?kind=${encodeURIComponent(kind)}&limit=${limit}${cursor}`,
+      token,
+    )
+  },
   delivered: (token: string, id: number, messageId: number) =>
     request<MessageProgress>(`/conversations/${id}/delivery`, token, {
       method: "POST",
