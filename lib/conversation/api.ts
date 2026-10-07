@@ -47,19 +47,35 @@ export type ConversationSummary = {
   id: number
   type: "DIRECT" | "GROUP"
   name: string | null
+  avatarUrl: string | null
   otherUser: Pick<PublicUser, "id" | "username" | "displayName" | "avatarUrl"> | null
   latestMessage: Message | null
   unreadCount: number
   updatedAt: string
 }
 
+export type ConversationMember = {
+  userId: number
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  joinedAt: string
+}
+
 export type Conversation = {
   id: number
   type: "DIRECT" | "GROUP"
   name: string | null
+  avatarUrl: string | null
   createdAt: string
   updatedAt: string
-  members: Array<{ userId: number; username: string; displayName: string; avatarUrl: string | null; joinedAt: string }>
+  members: ConversationMember[]
+}
+
+export type ConversationUpdatedEvent = {
+  conversationId: number
+  membership: "ACTIVE" | "REMOVED" | "DISSOLVED"
+  conversation: Conversation | null
 }
 
 type Page<T> = { items: T[]; nextCursor: string | null; hasMore: boolean }
@@ -116,4 +132,19 @@ export const conversationApi = {
     request<Conversation>(`/conversations/direct`, token, { method: "POST", body: JSON.stringify({ otherUserId }) }),
   group: (token: string, name: string, memberIds: number[]) =>
     request<Conversation>(`/conversations/group`, token, { method: "POST", body: JSON.stringify({ name, memberIds }) }),
+  updateGroup: (token: string, id: number, input: { name?: string; avatarObjectKey?: string }) =>
+    request<Conversation>(`/conversations/${id}`, token, { method: "PATCH", body: JSON.stringify(input) }),
+  createGroupAvatarUpload: (token: string, id: number, input: { contentType: string; contentLength: number }) =>
+    request<{ putUrl: string; objectKey: string; publicUrl: string; expiresAt: string }>(
+      `/conversations/${id}/avatar-uploads`,
+      token,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  addMember: (token: string, id: number, userId: number) =>
+    request<Conversation>(`/conversations/${id}/members`, token, {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    }),
+  removeMember: (token: string, id: number, memberId: number) =>
+    request<Conversation | undefined>(`/conversations/${id}/members/${memberId}`, token, { method: "DELETE" }),
 }
