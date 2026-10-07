@@ -35,6 +35,7 @@ export type Conversation = {
   messages: ChatMessage[]
   members?: number
   group?: boolean
+  avatarUrl?: string | null
 }
 
 export function MessageSearch({ token, conversationId, onClose, onSelect }: { token: string; conversationId: number; onClose: () => void; onSelect: (messageId: number) => void }) {
@@ -68,12 +69,33 @@ export function initials(name: string) {
     .toUpperCase()
 }
 
-export function Avatar({ name, color = "#0f766e", online = false, size = "md" }: { name: string; color?: string; online?: boolean; size?: "sm" | "md" | "lg" }) {
+const AVATAR_PX = { sm: 34, md: 44, lg: 78 } as const
+
+export function Avatar({ name, color = "#0f766e", online = false, size = "md", imageUrl }: { name: string; color?: string; online?: boolean; size?: "sm" | "md" | "lg"; imageUrl?: string | null }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const showImage = Boolean(imageUrl) && failedUrl !== imageUrl
+  const px = AVATAR_PX[size]
   const colorClass = color === "#9a3412" ? "bg-orange-800" : color === "#a16207" ? "bg-yellow-700" : color === "#4338ca" ? "bg-indigo-700" : color === "#be123c" ? "bg-rose-700" : color === "#0369a1" ? "bg-sky-700" : "bg-teal-700"
   return (
-    <span className={`relative grid shrink-0 place-items-center rounded-full text-xs font-extrabold text-white ${size === "sm" ? "size-[34px] text-[10px]" : size === "lg" ? "size-[78px] text-xl" : "size-11"} ${colorClass}`} aria-hidden="true">
-      {initials(name)}
-      {online && <i className="absolute -bottom-px right-[-1px] size-3 rounded-full border-2 border-[#151b42] bg-[#35a77a]" />}
+    <span
+      className={`relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full text-xs font-extrabold text-white ${size === "sm" ? "size-[34px] text-[10px]" : size === "lg" ? "size-[78px] text-xl" : "size-11"} ${colorClass}`}
+      aria-hidden="true"
+    >
+      {showImage ? (
+        <img
+          src={imageUrl!}
+          alt=""
+          width={px}
+          height={px}
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 size-full max-w-none object-cover"
+          onError={() => setFailedUrl(imageUrl ?? null)}
+        />
+      ) : (
+        initials(name)
+      )}
+      {online && <i className="absolute -bottom-px right-[-1px] z-10 size-3 rounded-full border-2 border-[#151b42] bg-[#35a77a]" />}
     </span>
   )
 }
@@ -100,7 +122,7 @@ export function ChatView({ conversation, message, setMessage, onSend, onTyping, 
   }, [highlightedMessageId, conversation.id])
 
   return <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-    <header className="flex min-h-[67px] items-center gap-2.5 border-b border-[#2d3560] bg-[#151b42] px-4 py-3"><button className="grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] max-[720px]:grid hover:bg-[#252e68] hover:text-[#2a3bff]" onClick={onBack} aria-label="Back"><ArrowLeft size={20} /></button><Avatar name={conversation.name} color={conversation.color} online={conversation.online} /><div className="flex min-w-0 flex-col gap-1"><b className="text-[15px]">{conversation.name}</b><span className="text-xs text-[#a6adcb]">{conversation.group ? (conversation.members ? `${conversation.members} members` : "Group") : conversation.online ? "Active now" : "Offline"}</span></div><span className="ml-auto" /><button className="grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff]" onClick={onSearch} aria-label="Search messages"><Search size={19} /></button><button className={`grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff] ${showInfo ? "bg-[#252e68] text-[#2a3bff]" : ""}`} onClick={() => setShowInfo(!showInfo)} aria-label="Conversation info"><Info size={19} /></button></header>
+    <header className="flex min-h-[67px] items-center gap-2.5 border-b border-[#2d3560] bg-[#151b42] px-4 py-3"><button className="grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] max-[720px]:grid hover:bg-[#252e68] hover:text-[#2a3bff]" onClick={onBack} aria-label="Back"><ArrowLeft size={20} /></button><Avatar name={conversation.name} color={conversation.color} online={conversation.online} imageUrl={conversation.avatarUrl} /><div className="flex min-w-0 flex-col gap-1"><b className="text-[15px]">{conversation.name}</b><span className="text-xs text-[#a6adcb]">{conversation.group ? (conversation.members ? `${conversation.members} members` : "Group") : conversation.online ? "Active now" : "Offline"}</span></div><span className="ml-auto" /><button className="grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff]" onClick={onSearch} aria-label="Search messages"><Search size={19} /></button><button className={`grid size-9 shrink-0 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff] ${showInfo ? "bg-[#252e68] text-[#2a3bff]" : ""}`} onClick={() => setShowInfo(!showInfo)} aria-label="Conversation info"><Info size={19} /></button></header>
     <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto px-[max(18px,5vw)] py-5">
       {hasMore && <button className="self-center text-xs text-[#9da6ff]" onClick={onLoadMore} type="button">Load older messages</button>}
       <div className="my-0 mb-2 self-center text-[11px] text-[#a6adcb]">Today</div>
@@ -112,5 +134,5 @@ export function ChatView({ conversation, message, setMessage, onSend, onTyping, 
 }
 
 export function InfoPanel({ conversation, onClose, onSearch }: { conversation: Conversation; onClose: () => void; onSearch: () => void }) {
-  return <aside className="absolute inset-0 z-20 w-full overflow-auto border-l border-[#2d3560] bg-[#151b42] md:relative md:w-[300px]"><header className="flex items-center justify-between border-b border-[#2d3560] px-4 py-3.5"><b className="text-sm">Conversation info</b><button className="grid size-9 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb]" onClick={onClose} aria-label="Close info"><X size={18} /></button></header><div className="p-6 text-center"><Avatar name={conversation.name} color={conversation.color} online={conversation.online} size="lg" /><h3 className="mt-3 text-base">{conversation.name}</h3><p className="my-1 text-xs text-[#a6adcb]">{conversation.group ? `${conversation.members} members` : conversation.online ? "Active now" : "Offline"}</p><div className="flex justify-center gap-4"><button className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Bell size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Mute</span></button><button onClick={onSearch} className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Search size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Search</span></button><button className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Users size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Add people</span></button></div></div><details className="border-t border-[#2d3560] px-4" open><summary className="flex cursor-pointer list-none justify-between py-4 text-sm font-semibold">Media, files and links <ChevronRight size={16} /></summary><p className="p-4 text-center text-xs text-[#a6adcb]">No shared media yet.</p></details><details className="border-t border-[#2d3560] px-4"><summary className="flex cursor-pointer list-none justify-between py-4 text-sm font-semibold">Privacy and support <ChevronRight size={16} /></summary><button className="border-0 bg-transparent pb-4 text-[#ffb5a7]">Delete chat</button></details></aside>
+  return <aside className="absolute inset-0 z-20 w-full overflow-auto border-l border-[#2d3560] bg-[#151b42] md:relative md:w-[300px]"><header className="flex items-center justify-between border-b border-[#2d3560] px-4 py-3.5"><b className="text-sm">Conversation info</b><button className="grid size-9 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb]" onClick={onClose} aria-label="Close info"><X size={18} /></button></header><div className="p-6 text-center"><Avatar name={conversation.name} color={conversation.color} online={conversation.online} size="lg" imageUrl={conversation.avatarUrl} /><h3 className="mt-3 text-base">{conversation.name}</h3><p className="my-1 text-xs text-[#a6adcb]">{conversation.group ? `${conversation.members} members` : conversation.online ? "Active now" : "Offline"}</p><div className="flex justify-center gap-4"><button className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Bell size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Mute</span></button><button onClick={onSearch} className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Search size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Search</span></button><button className="flex flex-col items-center gap-1.5 border-0 bg-transparent text-[11px] text-[#a6adcb]"><Users size={34} className="rounded-full bg-[#1e2752] p-2 text-[#2a3bff]" /><span>Add people</span></button></div></div><details className="border-t border-[#2d3560] px-4" open><summary className="flex cursor-pointer list-none justify-between py-4 text-sm font-semibold">Media, files and links <ChevronRight size={16} /></summary><p className="p-4 text-center text-xs text-[#a6adcb]">No shared media yet.</p></details><details className="border-t border-[#2d3560] px-4"><summary className="flex cursor-pointer list-none justify-between py-4 text-sm font-semibold">Privacy and support <ChevronRight size={16} /></summary><button className="border-0 bg-transparent pb-4 text-[#ffb5a7]">Delete chat</button></details></aside>
 }

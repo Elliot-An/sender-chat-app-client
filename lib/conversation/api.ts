@@ -47,7 +47,7 @@ export type ConversationSummary = {
   id: number
   type: "DIRECT" | "GROUP"
   name: string | null
-  otherUser: Pick<PublicUser, "id" | "username" | "displayName"> | null
+  otherUser: Pick<PublicUser, "id" | "username" | "displayName" | "avatarUrl"> | null
   latestMessage: Message | null
   unreadCount: number
   updatedAt: string
@@ -59,7 +59,7 @@ export type Conversation = {
   name: string | null
   createdAt: string
   updatedAt: string
-  members: Array<{ userId: number; username: string; displayName: string; joinedAt: string }>
+  members: Array<{ userId: number; username: string; displayName: string; avatarUrl: string | null; joinedAt: string }>
 }
 
 type Page<T> = { items: T[]; nextCursor: string | null; hasMore: boolean }
