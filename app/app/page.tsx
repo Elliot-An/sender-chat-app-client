@@ -553,14 +553,14 @@ export default function AppPage() {
         }
     }
 
-    function sendMessage(payload: {
+    async function sendMessage(payload: {
         body: string | null
         attachments: Array<{ objectKey: string; originalFilename: string }>
         clientMessageId: string
     }) {
         if (!active) return
         if (!payload.body && payload.attachments.length === 0) return
-        sendMutation.mutate({
+        await sendMutation.mutateAsync({
             id: active.id,
             body: payload.body,
             attachments: payload.attachments,

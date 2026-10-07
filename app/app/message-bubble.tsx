@@ -17,6 +17,7 @@ type MessageBubbleProps = {
     isLastInGroup: boolean
     showDeliveryStatus: boolean
     members: ConversationMemberProfile[]
+    animateEnter?: boolean
 }
 
 function DeliveryStatus({
@@ -175,18 +176,24 @@ export function MessageBubble({
     isLastInGroup,
     showDeliveryStatus,
     members,
+    animateEnter = false,
 }: MessageBubbleProps) {
     const fromMe = message.from === "me"
     const hasText = Boolean(message.text)
     const singleEmoji = hasText && isSingleEmojiMessage(message.text)
     const largeEmoji = hasText && !singleEmoji && isEmojiOnlyMessage(message.text)
     const attachments = [...message.attachments].sort((a, b) => a.sortOrder - b.sortOrder)
+    const enterClass = animateEnter
+        ? fromMe
+            ? "chat-message-enter-me"
+            : "chat-message-enter-them"
+        : ""
 
     return (
         <div
             className={`group/msg relative flex ${fromMe ? "justify-end" : "justify-start"} ${
                 isLastInGroup ? "mb-3" : "mb-0.5"
-            } ${highlighted ? "rounded-sm bg-[#493d8f]/20 px-1 py-0.5 transition-colors" : ""}`}
+            } ${highlighted ? "rounded-sm bg-[#493d8f]/20 px-1 py-0.5 transition-colors" : ""} ${enterClass}`}
             data-message-id={message.id}
             title={message.time}
         >

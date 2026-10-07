@@ -213,6 +213,66 @@
   }
 }
 
+@keyframes chat-typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes chat-message-in-me {
+  from {
+    opacity: 0;
+    transform: translate3d(10px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes chat-message-in-them {
+  from {
+    opacity: 0;
+    transform: translate3d(-10px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.chat-typing-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: #a6adcb;
+  animation: chat-typing-dot 1s ease-in-out infinite;
+}
+
+.chat-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.chat-message-enter-me {
+  animation: chat-message-in-me 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chat-message-enter-them {
+  animation: chat-message-in-them 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

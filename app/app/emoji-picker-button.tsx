@@ -20,6 +20,7 @@ type EmojiPickerButtonProps = {
     inputRef: React.RefObject<HTMLInputElement | null>
     open: boolean
     onOpenChange: (open: boolean) => void
+    disabled?: boolean
 }
 
 export function EmojiPickerButton({
@@ -28,9 +29,14 @@ export function EmojiPickerButton({
     inputRef,
     open,
     onOpenChange,
+    disabled = false,
 }: EmojiPickerButtonProps) {
     const rootRef = useRef<HTMLDivElement>(null)
     const buttonRef = useRef<HTMLButtonElement>(null)
+
+    useEffect(() => {
+        if (disabled && open) onOpenChange(false)
+    }, [disabled, open, onOpenChange])
 
     useEffect(() => {
         if (!open) return
@@ -71,12 +77,13 @@ export function EmojiPickerButton({
             <button
                 ref={buttonRef}
                 type="button"
-                className={`grid size-9 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff] ${
+                className={`grid size-9 place-items-center rounded-[10px] border-0 bg-transparent text-[#a6adcb] hover:bg-[#252e68] hover:text-[#2a3bff] disabled:cursor-default disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-[#a6adcb] ${
                     open ? "bg-[#252e68] text-[#2a3bff]" : ""
                 }`}
                 aria-label="Insert emoji"
                 aria-expanded={open}
                 aria-haspopup="dialog"
+                disabled={disabled}
                 onClick={() => onOpenChange(!open)}
             >
                 <Smile size={19}/>
