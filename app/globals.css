@@ -223,3 +223,44 @@
     scroll-behavior: auto !important;
   }
 }
+
+.chat-messages-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(166 173 203 / 0.45) transparent;
+}
+
+.chat-messages-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-messages-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages-scroll::-webkit-scrollbar-thumb {
+  background: rgb(166 173 203 / 0.45);
+  border-radius: 9999px;
+}
+
+.chat-messages-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(166 173 203 / 0.7);
+}
+
+.emoji-picker-root .epr-body,
+.emoji-picker-root .epr-emoji-category-content {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.emoji-picker-root .epr-body::-webkit-scrollbar,
+.emoji-picker-root .epr-emoji-category-content::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.emoji-picker-root .epr-body::-webkit-scrollbar-track,
+.emoji-picker-root .epr-emoji-category-content::-webkit-scrollbar-track,
+.emoji-picker-root .epr-body::-webkit-scrollbar-thumb,
+.emoji-picker-root .epr-emoji-category-content::-webkit-scrollbar-thumb {
+  background: transparent;
+}

@@ -20,17 +20,28 @@ export function insertAtCaret(
 const EMOJI_GRAPHEME =
   /^(?:\p{Regional_Indicator}{2}|\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\uFE0E)?(?:\u200D\p{Extended_Pictographic}(?:\p{Emoji_Modifier}|\uFE0F|\uFE0E)?)*|[0-9#*]\uFE0F?\u20E3)$/u
 
-/**
- * Messenger-style: trimmed body is only 1–3 emoji graphemes (no other text).
- */
-export function isEmojiOnlyMessage(text: string): boolean {
+function emojiGraphemes(text: string): string[] | null {
   const trimmed = text.trim()
-  if (!trimmed) return false
+  if (!trimmed) return null
 
   const graphemes = Array.from(
     new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(trimmed),
     (part) => part.segment,
   )
-  if (graphemes.length < 1 || graphemes.length > 3) return false
-  return graphemes.every((g) => EMOJI_GRAPHEME.test(g))
+  if (!graphemes.every((g) => EMOJI_GRAPHEME.test(g))) return null
+  return graphemes
+}
+
+/**
+ * Messenger-style: trimmed body is only 1–3 emoji graphemes (no other text).
+ */
+export function isEmojiOnlyMessage(text: string): boolean {
+  const graphemes = emojiGraphemes(text)
+  return graphemes != null && graphemes.length >= 1 && graphemes.length <= 3
+}
+
+/** Exactly one emoji grapheme — render bare (no bubble). */
+export function isSingleEmojiMessage(text: string): boolean {
+  const graphemes = emojiGraphemes(text)
+  return graphemes != null && graphemes.length === 1
 }

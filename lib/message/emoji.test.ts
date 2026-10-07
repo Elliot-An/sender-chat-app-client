@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { insertAtCaret, isEmojiOnlyMessage } from "./emoji.ts"
+import { insertAtCaret, isEmojiOnlyMessage, isSingleEmojiMessage } from "./emoji.ts"
 
 describe("insertAtCaret", () => {
   it("inserts at the caret and advances it", () => {
@@ -52,5 +52,15 @@ describe("isEmojiOnlyMessage", () => {
     assert.equal(isEmojiOnlyMessage("hi"), false)
     assert.equal(isEmojiOnlyMessage("😀 hi"), false)
     assert.equal(isEmojiOnlyMessage("😀🔥👋🎉"), false)
+  })
+})
+
+describe("isSingleEmojiMessage", () => {
+  it("is true only for exactly one emoji grapheme", () => {
+    assert.equal(isSingleEmojiMessage("😀"), true)
+    assert.equal(isSingleEmojiMessage("  👋🏻  "), true)
+    assert.equal(isSingleEmojiMessage("👨‍👩‍👧‍👦"), true)
+    assert.equal(isSingleEmojiMessage("😀🔥"), false)
+    assert.equal(isSingleEmojiMessage("hi"), false)
   })
 })

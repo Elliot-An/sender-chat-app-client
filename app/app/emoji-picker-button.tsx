@@ -86,7 +86,7 @@ export function EmojiPickerButton({
                     ref={rootRef}
                     role="dialog"
                     aria-label="Emoji picker"
-                    className="absolute bottom-[calc(100%+8px)] left-0 z-30"
+                    className="emoji-picker-root absolute bottom-[calc(100%+8px)] left-0 z-30"
                     onMouseDown={event => event.preventDefault()}
                 >
                     <EmojiPicker

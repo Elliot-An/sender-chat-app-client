@@ -1,5 +1,5 @@
 import {Check} from "lucide-react"
-import {isEmojiOnlyMessage} from "@/lib/message/emoji"
+import {isEmojiOnlyMessage, isSingleEmojiMessage} from "@/lib/message/emoji"
 import {Avatar} from "./avatar"
 import type {ChatMessage, ConversationMemberProfile} from "./types"
 
@@ -94,7 +94,8 @@ export function MessageBubble({
     members,
 }: MessageBubbleProps) {
     const fromMe = message.from === "me"
-    const largeEmoji = isEmojiOnlyMessage(message.text)
+    const singleEmoji = isSingleEmojiMessage(message.text)
+    const largeEmoji = !singleEmoji && isEmojiOnlyMessage(message.text)
 
     return (
         <div
@@ -132,27 +133,42 @@ export function MessageBubble({
                     )}
 
                     <div
-                        className={`relative flex items-center gap-2 ${
+                        className={`relative flex items-end gap-2 ${
                             fromMe ? "flex-row-reverse" : "flex-row"
                         }`}
                     >
-                        <div
-                            className={`overflow-wrap-anywhere ${
-                                largeEmoji
-                                    ? "px-2 py-1 text-[40px] leading-none"
-                                    : "px-3 py-2 text-[15px] leading-[1.4]"
-                            } ${bubbleRadius(
-                                fromMe,
-                                isFirstInGroup,
-                                isLastInGroup,
-                            )} ${
-                                fromMe
-                                    ? "bg-[#2a3bff] text-white"
-                                    : "border border-[#2d3560] bg-[#151b42] text-[#f7f8ff]"
-                            }`}
-                        >
-                            {message.text}
-                        </div>
+                        {singleEmoji ? (
+                            <span
+                                className={`inline-flex h-11 shrink-0 items-center text-[36px] leading-none ${
+                                    fromMe
+                                        ? "translate-x-[0.12em]"
+                                        : "-translate-x-[0.12em]"
+                                }`}
+                                aria-label={message.text}
+                            >
+                                <span className="block translate-y-[0.05em]">
+                                    {message.text}
+                                </span>
+                            </span>
+                        ) : (
+                            <div
+                                className={`overflow-wrap-anywhere ${
+                                    largeEmoji
+                                        ? "flex items-center gap-0.5 px-2.5 py-1.5 text-[32px] leading-none"
+                                        : "px-3 py-2 text-[15px] leading-[1.4]"
+                                } ${bubbleRadius(
+                                    fromMe,
+                                    isFirstInGroup,
+                                    isLastInGroup,
+                                )} ${
+                                    fromMe
+                                        ? "bg-[#2a3bff] text-white"
+                                        : "border border-[#2d3560] bg-[#151b42] text-[#f7f8ff]"
+                                }`}
+                            >
+                                {message.text}
+                            </div>
+                        )}
                         <time
                             dateTime={message.createdAt}
                             className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-[11px] whitespace-nowrap text-[#a6adcb] opacity-0 transition-opacity [@media(hover:hover)]:group-hover/msg:opacity-100 group-focus-within/msg:opacity-100 ${
