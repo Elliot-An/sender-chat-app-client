@@ -104,10 +104,13 @@ function AttachmentBlock({
 }) {
     const isImage = attachment.contentType.startsWith("image/")
     const [imageUrl, setImageUrl] = useState<string | null>(null)
+    const [imageLoaded, setImageLoaded] = useState(false)
 
     useEffect(() => {
         if (!isImage) return
         let cancelled = false
+        setImageUrl(null)
+        setImageLoaded(false)
         conversationApi
             .downloadAttachment(token, conversationId, messageId, attachment.id)
             .then(response => {
@@ -131,20 +134,33 @@ function AttachmentBlock({
         window.open(response.getUrl, "_blank", "noopener,noreferrer")
     }
 
-    if (isImage && imageUrl) {
+    if (isImage) {
         return (
             <button
                 type="button"
-                className="block overflow-hidden rounded-lg border-0 bg-transparent p-0"
+                className="relative block max-h-56 max-w-[min(100%,280px)] overflow-hidden rounded-lg border-0 bg-[#0d1026] p-0"
                 onClick={download}
                 aria-label={`Open ${attachment.originalFilename}`}
             >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src={imageUrl}
-                    alt={attachment.originalFilename}
-                    className="max-h-56 max-w-full object-contain"
-                />
+                {!imageLoaded && (
+                    <span
+                        className="block h-40 w-56 max-w-full animate-pulse bg-[#1e2752]"
+                        aria-hidden
+                    />
+                )}
+                {imageUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                        src={imageUrl}
+                        alt={attachment.originalFilename}
+                        onLoad={() => setImageLoaded(true)}
+                        className={
+                            imageLoaded
+                                ? "block max-h-56 max-w-full object-contain"
+                                : "absolute inset-0 max-h-56 max-w-full object-contain opacity-0"
+                        }
+                    />
+                ) : null}
             </button>
         )
     }

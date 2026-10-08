@@ -1,3 +1,9 @@
+import {
+  type AuthErrorBody,
+  httpAuthError,
+  networkAuthError,
+} from "@/lib/auth/errors"
+
 export type PublicUser = {
   id: number;
   username: string;
@@ -11,6 +17,8 @@ export type AuthResponse = {
   accessToken: string;
   accessTokenExpiresAt: string;
 };
+
+export { AuthApiError, getAuthErrorPresentation } from "@/lib/auth/errors"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const ACCESS_TOKEN_COOKIE = "sender_access_token";
@@ -33,17 +41,20 @@ export function clearAccessToken() {
 }
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}/api/v1${path}`, {
-    ...init,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...init.headers },
-  });
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}/api/v1${path}`, {
+      ...init,
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...init.headers },
+    })
+  } catch (cause) {
+    throw networkAuthError(cause)
+  }
 
   if (!response.ok) {
-    const error = (await response.json().catch(() => null)) as
-      | { code?: string; message?: string; fieldErrors?: Record<string, string> }
-      | null;
-    throw new Error(error?.message ?? "Request failed");
+    const error = (await response.json().catch(() => null)) as AuthErrorBody | null
+    throw httpAuthError(response.status, error)
   }
 
   if (response.status === 204) return undefined as T;

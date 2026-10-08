@@ -44,30 +44,44 @@ export function Avatar({
                 : size === "lg"
                     ? "size-[78px] text-xl"
                     : "size-11"
+    const onlineDotClass =
+        size === "xs"
+            ? "size-1.5 border"
+            : size === "sm"
+                ? "size-2.5 border-2"
+                : size === "lg"
+                    ? "size-4 border-[3px]"
+                    : "size-3 border-2"
 
     return (
         <span
-            className={`relative inline-grid shrink-0 place-items-center overflow-hidden rounded-full text-xs font-extrabold text-white ${sizeClass} ${colorClass} ${className}`}
+            className={`relative inline-grid shrink-0 ${sizeClass} ${className}`}
             aria-hidden="true"
             title={title}
         >
-      {showImage ? (
-          <img
-              src={imageUrl!}
-              alt=""
-              width={px}
-              height={px}
-              loading="lazy"
-              decoding="async"
-              className="absolute inset-0 size-full max-w-none object-cover"
-              onError={() => setFailedUrl(imageUrl ?? null)}
-          />
-      ) : (
-          initials(name)
-      )}
+            <span
+                className={`relative inline-grid size-full place-items-center overflow-hidden rounded-full text-xs font-extrabold text-white ${colorClass}`}
+            >
+                {showImage ? (
+                    <img
+                        src={imageUrl!}
+                        alt=""
+                        width={px}
+                        height={px}
+                        loading="lazy"
+                        decoding="async"
+                        className="absolute inset-0 size-full max-w-none object-cover"
+                        onError={() => setFailedUrl(imageUrl ?? null)}
+                    />
+                ) : (
+                    initials(name)
+                )}
+            </span>
             {online && (
-                <i className="absolute -bottom-px right-[-1px] z-10 size-3 rounded-full border-2 border-[#151b42] bg-[#35a77a]"/>
+                <i
+                    className={`absolute bottom-0 right-0 z-10 rounded-full border-[#151b42] bg-[#35a77a] ${onlineDotClass}`}
+                />
             )}
-    </span>
+        </span>
     )
 }

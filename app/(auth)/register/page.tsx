@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
+import { AuthErrorAlert } from "@/components/auth/auth-error-alert"
 import { AuthShell } from "@/components/auth/auth-shell"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +22,10 @@ export default function RegisterPage() {
     confirmation: touched.confirmation && (!form.confirmation ? "Please confirm your password" : form.confirmation !== form.password ? "Passwords do not match" : ""),
   }
   const hasErrors = !/^[A-Za-z0-9_]{3,30}$/.test(form.username) || !/^\S+@\S+\.\S+$/.test(form.email) || form.password.length < 8 || form.confirmation !== form.password
-  const set = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }))
+  const set = (key: keyof typeof form, value: string) => {
+    setForm(current => ({ ...current, [key]: value }))
+    if (mutation.isError) mutation.reset()
+  }
   const blur = (key: string) => setTouched(current => ({ ...current, [key]: true }))
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -68,7 +72,7 @@ export default function RegisterPage() {
         {field("email", "Email", "email", "email")}
         {field("password", "Password", "password", "new-password")}
         {field("confirmation", "Confirm password", "password", "new-password")}
-        {mutation.isError && <p role="alert" className="m-0 rounded-lg border border-[#ffb5a7]/25 bg-[#ffb5a7]/[.08] p-3 text-[.74rem] text-[#ffb5a7]">{mutation.error.message}</p>}
+        {mutation.isError && <AuthErrorAlert error={mutation.error} intent="register" />}
         <Button type="submit" disabled={mutation.isPending} className="mt-1 h-13 w-full rounded-lg bg-[#2a3bff] text-white hover:bg-[#1d2edc]">
           {mutation.isPending ? "Creating account..." : "Create account"}
         </Button>

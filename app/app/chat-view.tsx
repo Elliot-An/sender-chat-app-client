@@ -180,6 +180,8 @@ export function ChatView({
  }: ChatViewProps) {
     const typingTimer = useRef<number | undefined>(undefined)
     const messagesScrollRef = useRef<HTMLDivElement>(null)
+    const messagesContentRef = useRef<HTMLDivElement>(null)
+    const pinnedToBottomRef = useRef(true)
     const messageInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([])
@@ -267,12 +269,41 @@ export function ChatView({
         })
     }
 
-    useLayoutEffect(() => {
-        if (highlightedMessageId !== null) return
+    function scrollMessagesToBottom() {
         const el = messagesScrollRef.current
         if (!el) return
         el.scrollTop = el.scrollHeight
-    }, [conversation.id, lastMessageId, highlightedMessageId])
+    }
+
+    function isNearBottom(el: HTMLElement, threshold = 80) {
+        return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
+    }
+
+    useLayoutEffect(() => {
+        pinnedToBottomRef.current = true
+        if (highlightedMessageId !== null) return
+        scrollMessagesToBottom()
+    }, [conversation.id])
+
+    useLayoutEffect(() => {
+        if (highlightedMessageId !== null) return
+        if (!pinnedToBottomRef.current) return
+        scrollMessagesToBottom()
+    }, [lastMessageId, highlightedMessageId, conversation.messages.length])
+
+    useEffect(() => {
+        const scroller = messagesScrollRef.current
+        const content = messagesContentRef.current
+        if (!scroller || !content) return
+
+        const observer = new ResizeObserver(() => {
+            if (highlightedMessageId !== null) return
+            if (!pinnedToBottomRef.current) return
+            scrollMessagesToBottom()
+        })
+        observer.observe(content)
+        return () => observer.disconnect()
+    }, [conversation.id, highlightedMessageId])
 
     function changeMessage(value: string) {
         setMessage(value)
@@ -341,41 +372,46 @@ export function ChatView({
 
             <div
                 ref={messagesScrollRef}
-                className="chat-messages-scroll flex min-h-0 flex-1 flex-col overflow-auto px-[max(18px,2vw)] py-5"
+                className="chat-messages-scroll min-h-0 flex-1 overflow-auto px-[max(18px,2vw)] py-5"
+                onScroll={event => {
+                    pinnedToBottomRef.current = isNearBottom(event.currentTarget)
+                }}
             >
-                {hasMore && (
-                    <button
-                        className="mb-3 self-center text-xs text-[#9da6ff]"
-                        onClick={onLoadMore}
-                        type="button"
-                    >
-                        Load older messages
-                    </button>
-                )}
-                {timeline.map(item =>
-                    item.kind === "day" ? (
-                        <div
-                            key={item.key}
-                            className="my-3 self-center text-[11px] font-medium text-[#a6adcb]"
+                <div ref={messagesContentRef} className="flex min-h-full flex-col justify-end">
+                    {hasMore && (
+                        <button
+                            className="mb-3 self-center text-xs text-[#9da6ff]"
+                            onClick={onLoadMore}
+                            type="button"
                         >
-                            {item.label}
-                        </div>
-                    ) : (
-                        <MessageBubble
-                            key={item.key}
-                            token={token}
-                            message={item.message}
-                            highlighted={highlightedMessageId === item.message.id}
-                            showName={item.showName}
-                            showAvatar={item.showAvatar}
-                            isFirstInGroup={item.isFirstInGroup}
-                            isLastInGroup={item.isLastInGroup}
-                            showDeliveryStatus={item.message.id === showDeliveryOnMessageId}
-                            members={members}
-                            animateEnter={enteringMessageIds.has(item.message.id)}
-                        />
-                    ),
-                )}
+                            Load older messages
+                        </button>
+                    )}
+                    {timeline.map(item =>
+                        item.kind === "day" ? (
+                            <div
+                                key={item.key}
+                                className="my-3 self-center text-[11px] font-medium text-[#a6adcb]"
+                            >
+                                {item.label}
+                            </div>
+                        ) : (
+                            <MessageBubble
+                                key={item.key}
+                                token={token}
+                                message={item.message}
+                                highlighted={highlightedMessageId === item.message.id}
+                                showName={item.showName}
+                                showAvatar={item.showAvatar}
+                                isFirstInGroup={item.isFirstInGroup}
+                                isLastInGroup={item.isLastInGroup}
+                                showDeliveryStatus={item.message.id === showDeliveryOnMessageId}
+                                members={members}
+                                animateEnter={enteringMessageIds.has(item.message.id)}
+                            />
+                        ),
+                    )}
+                </div>
             </div>
 
             {typingUsers.length > 0 && (
