@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button"
 import { authApi, setAccessToken } from "@/lib/auth/api"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [email, setEmail] = useState("loadtest1@example.com")
+  const [password, setPassword] = useState("LoadTest123!")
   const [touched, setTouched] = useState({ email: false, password: false })
   const mutation = useMutation({ mutationFn: () => authApi.login({ email, password }) })
   const emailError = touched.email && (!email ? "Email is required" : !/^\S+@\S+\.\S+$/.test(email) ? "Enter a valid email" : "")

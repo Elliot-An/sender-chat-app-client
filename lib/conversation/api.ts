@@ -58,7 +58,7 @@ export type MessageProgress = {
   deliveredAt: string | null
   readThroughMessageId: number | null
   readAt: string | null
-  unreadCount: number
+  hasUnread: boolean
 }
 
 export type MessageSearchResult = {
@@ -76,7 +76,7 @@ export type ConversationSummary = {
   avatarUrl: string | null
   otherUser: Pick<PublicUser, "id" | "username" | "displayName" | "avatarUrl"> | null
   latestMessage: Message | null
-  unreadCount: number
+  hasUnread: boolean
   updatedAt: string
   online: boolean
 }

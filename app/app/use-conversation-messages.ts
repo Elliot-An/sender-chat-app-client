@@ -36,11 +36,17 @@ export function useConversationMessages(token: string | null, activeConversation
             (data: { items: ConversationSummary[] } | undefined) => data && {
                 ...data,
                 items: data.items.map(summary => summary.id === message.conversationId
-                    ? {...summary, latestMessage: message, updatedAt: message.createdAt}
+                    ? {
+                        ...summary,
+                        latestMessage: message,
+                        updatedAt: message.createdAt,
+                        hasUnread: message.sender.id !== currentUserId
+                            && message.conversationId !== activeConversationRef.current,
+                    }
                     : summary),
             },
         )
-    }, [queryClient, token])
+    }, [currentUserId, queryClient, token])
     const messageQuery = useInfiniteQuery({
         queryKey: ["messages", token, activeConversation],
         queryFn: ({pageParam}) => conversationApi.messages(token as string, activeConversation as number, pageParam),
@@ -79,7 +85,7 @@ export function useConversationMessages(token: string | null, activeConversation
                 (data: { items: ConversationSummary[] } | undefined) => data && {
                     ...data,
                     items: data.items.map(summary => summary.id === variables.id
-                        ? {...summary, unreadCount: progress.unreadCount}
+                        ? {...summary, hasUnread: progress.hasUnread}
                         : summary),
                 },
             )
@@ -94,7 +100,7 @@ export function useConversationMessages(token: string | null, activeConversation
                 (data: { items: ConversationSummary[] } | undefined) => data && {
                     ...data,
                     items: data.items.map(summary => summary.id === variables.id
-                        ? {...summary, unreadCount: progress.unreadCount}
+                        ? {...summary, hasUnread: progress.hasUnread}
                         : summary),
                 },
             )

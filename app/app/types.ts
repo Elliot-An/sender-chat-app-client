@@ -40,7 +40,7 @@ export type Conversation = {
     members?: number
     group?: boolean
     avatarUrl?: string | null
-    unreadCount: number
+    hasUnread: boolean
 }
 
 export const AVATAR_COLORS = [

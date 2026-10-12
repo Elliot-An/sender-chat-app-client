@@ -57,7 +57,7 @@ function summaryToConversation(summary: ConversationSummary): Conversation {
             summary.type === "GROUP"
                 ? summary.avatarUrl
                 : (summary.otherUser?.avatarUrl ?? null),
-        unreadCount: summary.unreadCount,
+        hasUnread: summary.hasUnread,
         messages: summary.latestMessage
             ? [
                 {
@@ -289,7 +289,7 @@ export default function AppPage() {
                                     avatarUrl: updated.avatarUrl,
                                     otherUser: null,
                                     latestMessage: null,
-                                    unreadCount: 0,
+                                    hasUnread: false,
                                     updatedAt: updated.updatedAt,
                                     online: false,
                                 }
@@ -756,10 +756,11 @@ export default function AppPage() {
                           <time className="text-xs text-[#a6adcb]">
                             {conversation.messages.at(-1)?.time}
                           </time>
-                            {conversation.unreadCount > 0 && (
-                                <em className="min-w-5 rounded-full bg-[#2a3bff] px-1.5 py-0.5 text-center text-[10px] not-italic text-white">
-                                    {conversation.unreadCount}
-                                </em>
+                            {conversation.hasUnread && (
+                                <em
+                                    className="size-2 shrink-0 rounded-full bg-[#2a3bff] not-italic"
+                                    aria-label="Unread messages"
+                                />
                             )}
                         </span>
                       </span>
