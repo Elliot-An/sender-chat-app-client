@@ -5,7 +5,7 @@ import {
   getAuthErrorPresentation,
   httpAuthError,
   networkAuthError,
-} from "./errors.ts"
+} from "./errors"
 
 describe("networkAuthError", () => {
   it("maps fetch failures to a clear connection message", () => {

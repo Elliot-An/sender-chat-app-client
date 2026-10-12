@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import {Theme} from "emoji-picker-react"
 import {Smile} from "lucide-react"
 import {useEffect, useRef} from "react"
 import {insertAtCaret} from "@/lib/message/emoji"
@@ -97,7 +98,7 @@ export function EmojiPickerButton({
                     onMouseDown={event => event.preventDefault()}
                 >
                     <EmojiPicker
-                        theme="dark"
+                        theme={Theme.DARK}
                         skinTonesDisabled
                         lazyLoadEmojis
                         searchPlaceHolder="Search emoji"

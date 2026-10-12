@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { insertAtCaret, isEmojiOnlyMessage, isSingleEmojiMessage } from "./emoji.ts"
+import { insertAtCaret, isEmojiOnlyMessage, isSingleEmojiMessage } from "./emoji"
 
 describe("insertAtCaret", () => {
   it("inserts at the caret and advances it", () => {

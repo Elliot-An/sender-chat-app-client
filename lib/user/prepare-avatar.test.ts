@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { squareCropRect } from "./prepare-avatar.ts"
+import { squareCropRect } from "./prepare-avatar"
 
 describe("squareCropRect", () => {
   it("centers a landscape source", () => {
